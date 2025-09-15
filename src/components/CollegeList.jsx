@@ -1,5 +1,6 @@
 import React from 'react';
-import CollegeCard from './Collegecard';
+import CollegeCard from "../components/CollegeCard"; // If file is CollegeCard.jsx
+
 
 const CollegeList = ({ colleges }) => {
   return (
