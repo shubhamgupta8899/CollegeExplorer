@@ -1,35 +1,57 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
-const Navbar = () => {
+const Navbar = ({ onLinkClick, user, isAdmin, onLogout }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // Check authentication status on mount & route change
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    setIsLoggedIn(!!token);
-  }, [location]);
+  // Handle navigation link clicks
+  const handleNavLinkClick = (e, linkName, path) => {
+    const hasSignedUp = localStorage.getItem("hasSignedUp");
+    const storedUser = JSON.parse(localStorage.getItem("user") || "null");
 
-  // Dynamic nav items based on login state
+    // Prevent modal for admin routes or if already on the target page
+    if (!path.includes('/admin') && location.pathname !== path) {
+      if (!hasSignedUp && !storedUser) {
+        // User is NOT logged in → stop navigation and open modal
+        e.preventDefault();
+        onLinkClick(linkName);
+        return; // 🚨 stop here
+      }
+      // ✅ Logged in → allow navigation
+      navigate(path);
+    }
+  };
+
+  // Dynamic nav items
   const navItems = [
     { path: '/', name: 'Home' },
     { path: '/top-colleges', name: 'Top Colleges' },
     { path: '/top-academics', name: 'Top Academics' },
     { path: '/top-placements', name: 'Top Placements' },
-    isLoggedIn
-      ? { path: '/admin/manage-college', name: 'Dashboard' }
+    user || isAdmin
+      ? { path: isAdmin ? '/admin/dashboard' : '/profile', name: isAdmin ? 'Dashboard' : 'Profile' }
       : { path: '/contact', name: 'Contact' },
   ];
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    setIsLoggedIn(false);
+    onLogout();
     setMobileMenuOpen(false);
     navigate('/');
+  };
+
+  // Get initials for avatar
+  const getUserInitials = () => {
+    if (!user) return '';
+    if (user.name) {
+      return user.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+    }
+    if (user.email) {
+      return user.email.substring(0, 2).toUpperCase();
+    }
+    return 'U';
   };
 
   return (
@@ -51,12 +73,14 @@ const Navbar = () => {
             <div className="ml-10 flex items-center space-x-8">
               {navItems.map((item) => {
                 const isActive = location.pathname === item.path;
-                const isDashboard = item.name === 'Dashboard';
+                const isDashboard = item.name === 'Dashboard' || item.name === 'Profile';
+                const isAdminRoute = item.path.includes('/admin');
 
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
+                    onClick={(e) => !isAdminRoute && handleNavLinkClick(e, item.name, item.path)}
                     className={`relative px-1 py-2 text-sm font-medium transition-colors ${
                       isActive
                         ? isDashboard
@@ -81,13 +105,31 @@ const Navbar = () => {
                   </Link>
                 );
               })}
-              {isLoggedIn ? (
-                <button
-                  onClick={handleLogout}
-                  className="ml-4 px-4 py-2 rounded-md text-sm font-medium text-white bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 shadow-sm transition-all"
-                >
-                  Log Out
-                </button>
+
+              {/* Profile / Admin / Logout */}
+              {user || isAdmin ? (
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                      {getUserInitials()}
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-gray-900">
+                        {user?.name || (isAdmin ? 'Admin' : 'User')}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {isAdmin ? 'Administrator' : 'Student'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleLogout}
+                    className="ml-4 px-4 py-2 rounded-md text-sm font-medium text-white bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 shadow-sm transition-all"
+                  >
+                    Log Out
+                  </button>
+                </div>
               ) : (
                 <Link
                   to="/admin/login"
@@ -138,12 +180,19 @@ const Navbar = () => {
         <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
-            const isDashboard = item.name === 'Dashboard';
+            const isDashboard = item.name === 'Dashboard' || item.name === 'Profile';
+            const isAdminRoute = item.path.includes('/admin');
 
             return (
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={(e) => {
+                  if (!isAdminRoute) {
+                    handleNavLinkClick(e, item.name, item.path);
+                  }
+                  setMobileMenuOpen(false);
+                }}
                 className={`block px-3 py-2 rounded-md text-base font-medium ${
                   isActive
                     ? isDashboard
@@ -153,13 +202,32 @@ const Navbar = () => {
                       ? 'text-purple-600 hover:text-purple-800 font-semibold'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
-                onClick={() => setMobileMenuOpen(false)}
               >
                 {item.name}
               </Link>
             );
           })}
-          {isLoggedIn ? (
+
+          {/* Mobile Profile + Logout */}
+          {(user || isAdmin) && (
+            <div className="px-3 py-2 border-t border-gray-200">
+              <div className="flex items-center">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold mr-3">
+                  {getUserInitials()}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    {user?.name || (isAdmin ? 'Admin' : 'User')}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {isAdmin ? 'Administrator' : 'Student'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {user || isAdmin ? (
             <button
               onClick={handleLogout}
               className="block w-full px-3 py-2 rounded-md text-base font-medium text-center text-white bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 shadow-sm"

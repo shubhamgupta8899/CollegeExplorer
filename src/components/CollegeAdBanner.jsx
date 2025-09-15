@@ -32,7 +32,7 @@ const CollegeAdBanner = ({ college }) => {
         className="relative w-full md:w-72 h-48 rounded-xl overflow-hidden shadow-xl border-4 border-white"
         whileHover={{ scale: 1.03 }}
       >
-        <img
+        {/* <img
           src={college.image}
           alt={college.name}
           className="w-full h-full object-cover"
@@ -40,7 +40,7 @@ const CollegeAdBanner = ({ college }) => {
             e.target.onerror = null;
             e.target.src = "https://via.placeholder.com/400x300?text=College+Campus";
           }}
-        />
+        /> */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
       </motion.div>
 

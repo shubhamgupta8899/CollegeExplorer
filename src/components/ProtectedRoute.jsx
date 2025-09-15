@@ -1,39 +1,42 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import AuthService from "../service/AuthService";
 
 const ProtectedRoute = ({ children }) => {
   const [isVerifying, setIsVerifying] = useState(true);
   const [isVerified, setIsVerified] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem("adminToken");
+      const token = localStorage.getItem("accessToken");
 
       if (!token) {
-        navigate("/admin/login");
+        // No token, redirect to login
+        setIsVerified(false);
+        setIsVerifying(false);
         return;
       }
 
       try {
-        const isValid = await AuthService.verifyToken();
-        if (isValid) {
-          setIsVerified(true);
-        } else {
-          localStorage.removeItem("adminToken"); // Optional: clear invalid token
-          navigate("/admin/login");
-        }
+        const isValid = await AuthService.verifyAdminToken(token);
+        setIsVerified(isValid);
       } catch (err) {
-        console.error("Error verifying token:", err);
-        navigate("/admin/login");
+        console.error("Token verification failed:", err);
+
+        // Cleanup invalid tokens
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("isAdmin");
+        localStorage.removeItem("user");
+
+        setIsVerified(false);
       } finally {
         setIsVerifying(false);
       }
     };
 
     checkAuth();
-  }, [navigate]);
+  }, []);
 
   if (isVerifying) {
     return (
@@ -43,7 +46,7 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  return isVerified ? children : null;
+  return isVerified ? children : <Navigate to="/admin/login" replace />;
 };
 
 export default ProtectedRoute;
